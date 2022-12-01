@@ -5,15 +5,14 @@ updatePasswordInput <- function(session, inputId, label = NULL, value = NULL) {
 }
 
 function(input, output, session) {
-  
   tab0 <- reactiveValues(df = NULL, df_label = NULL, df_Tar = NULL, df_label_Enrolled = NULL, Vars = NULL,
                          DateRange_Tar = NULL, Total_Screen_Tar = NULL)
   tab1_1 <- reactiveValues(df = NULL)
   tab1_2 <- reactiveValues(vars_1_2_1 = NULL, vars_1_2_2 = NULL, vars_1_2_3 = NULL)
   tab1_3 <- reactiveValues(vars_1_3_cate = NULL, vars_1_3_num = NULL)
   
-  # tab 0
-  # Read Variables List
+  # tab 0: Verification & Setting
+  # Read Variable List
   output$result_fileinput <- renderText('Uploaded file:')
   is_vars <- F
   vars_list_filename <- NULL
@@ -26,7 +25,7 @@ function(input, output, session) {
     output$result_search <- NULL
   })
   
-  # Fileinput Reset
+  # Reset All Input Information
   observeEvent(input$reset, {
     is_vars <<- F
     vars_list_filename <<- NULL
@@ -35,29 +34,34 @@ function(input, output, session) {
     output$result_search <- NULL
   })
   
-  
   observeEvent(input$search, {
-    # Initialize contents
+    # Initialize Shiny App Contents
     output$tb_1_1 <- NULL
     ggplot_1_3_1 <<- list()
     
-    # Import Data
+    # REDCap Website Address
     url <- 'https://www.redcap.ihrp.uic.edu/api/'
     
-    # Read CodeBook
+    # Read codebook(data dictionary) of REDCap Project 
     formData <- list(token = input$token, content = 'metadata', format = 'csv', returnFormat = 'json')
     metadata <- POST(url, body = formData, encode = 'form') %>% content() %>% as.data.frame()
     
-    # Read Data
+    # Read Data from REDCap Database
     formData <- list(token = input$token, content = 'record', format = 'csv', type = 'flat')
     tab0$df <- POST(url, body = formData, encode = 'form') %>% content() %>% as.data.frame()
     
-    # Remove Identifier & only read the variables in CodeBook
+    # Remove Identifier & Read the Variables in the Codebook
     tab0$df <- tab0$df[,colnames(tab0$df) %in% metadata$field_name[is.na(metadata$identifier)]]
     
-    # Check necessary variables
-    if (all(c(input$var_screen_date, input$var_is_eligible, input$var_exclude_reason, input$var_is_enrolled, input$var_enrolled_date) %in% colnames(tab0$df))) {
-      # Rename Variable to fixed name
+    # Rename the 5 Required Variables, including the following Variables
+    # Screening Date/Participant Eligibility/Exclusion Reason/Receipt of Randomization/Randomization Date
+    
+    if (all(c(input$var_screen_date, 
+              input$var_is_eligible, 
+              input$var_exclude_reason, 
+              input$var_is_enrolled, 
+              input$var_enrolled_date) %in% colnames(tab0$df))) {
+      # Rename Variable to the following fixed name
       colnames(tab0$df)[colnames(tab0$df) == input$var_screen_date] <- 'screen_date'
       colnames(tab0$df)[colnames(tab0$df) == input$var_is_eligible] <- 'is_eligible'
       colnames(tab0$df)[colnames(tab0$df) == input$var_exclude_reason] <- 'exclude_reason'
@@ -69,7 +73,7 @@ function(input, output, session) {
       metadata$field_name[metadata$field_name == input$var_is_enrolled] <- 'is_enrolled'
       metadata$field_name[metadata$field_name == input$var_enrolled_date] <- 'enrolled_date'
       
-      # Remove unnecessary rows
+      # Remove Unnecessary Data Rows - only Read the Data Collected at Baseline Time Point in this Shiny App
       tab0$df <- tab0$df %>%
         filter(!is.na(screen_date))
       
@@ -79,15 +83,15 @@ function(input, output, session) {
           select(any_of(c('screen_date', 'is_eligible', 'exclude_reason', 'is_enrolled', 'enrolled_date', vars_list)))
       }
       
-      # Check weather data (token & variable list) is successfully imported
+      # Check whether the REDCap data (Project Token & Variable List) is Successfully Imported
       if (nrow(tab0$df) > 0 & ncol(tab0$df) > 0) {
         output$result_search <- renderText('Dataset Successfully Imported!')
         
         # Data Processing
-        # (1) Convert categorical variable to class 'factor'
-        # (2) Create another data object with labels for categorical variable
-        # Please simplify the labels (as less than two strings)
-        # tab0$df$study_id <- factor(tab0$df$study_id)
+          # (1) Convert categorical variable to class 'factor'
+          # (2) Create another data object with labels for categorical variable
+        # Please try to simplify the variable label if possible
+
         tab0$df_label <- tab0$df
         metadata_factor <- metadata[!is.na(metadata$select_choices_or_calculations), c('field_name', 'select_choices_or_calculations')]
         for (i in 1:nrow(metadata_factor)) {
@@ -99,8 +103,7 @@ function(input, output, session) {
         }
         rm(i, idx, tmp)
         
-        
-        # Variable Label
+        # Add Label for Variable
         tab0$Vars <- colnames(tab0$df)
         names(tab0$Vars) <- metadata$field_label[sapply(tab0$Vars, function(x) which(metadata$field_name == x))]
         
@@ -111,14 +114,13 @@ function(input, output, session) {
         tab1_3$vars_1_3_cate <- tab1_2$vars_1_2_2
         tab1_3$vars_1_3_num <- tab0$Vars[(names(tab0$Vars) %in% metadata$field_label[metadata$text_validation_type_or_show_slider_number %in% c('integer', 'number')]) & !(tab0$Vars %in% c('study_id', 'outcome'))]
         
-        
         # Target Information
+        # Total Targeted Number of Screened Participants/Expected Rate of Eligibility/Expected Rate of Randomization
         tab0$DateRange_Tar <- input$DateRange_Tar
         tab0$Total_Screen_Tar <- input$Total_Screen_Tar
         tab0$df_Tar <- data.frame(Date = seq(tab0$DateRange_Tar[1], tab0$DateRange_Tar[2], by = 'day')) %>%
           mutate(CumN_Screen_Tar = (seq_len(n())/n()) * tab0$Total_Screen_Tar) %>%
           mutate(CumN_Enrolled_Tar = CumN_Screen_Tar * input$rate_eligible * input$rate_enrolled)
-        
         
         # tab 1-1: Project Summary
         tab1_1$df <- data.frame(Index = c('Research Period',
@@ -160,22 +162,20 @@ function(input, output, session) {
             htmlTable(rnames = F)
         )
         
-        
-        # tab 1-2-1
+        # tab 1-2-1: Recruitment Tracking - Screened Data
         updateDateRangeInput(session, 'daterange_1_2_1', start = min(tab0$DateRange_Tar[1], tab0$df$screen_date, na.rm = T), end = max(tab0$DateRange_Tar[2], tab0$df$screen_date, na.rm = T), min = min(tab0$DateRange_Tar[1], tab0$df$screen_date, na.rm = T), max = max(tab0$DateRange_Tar[2], tab0$df$screen_date, na.rm = T))
         updateSelectInput(session, 'var_facet_1_2_1', choices = c('Overall' = 'None', tab1_2$vars_1_2_1))
         updateSelectInput(session, 'var_group_1_2_1', choices = c('Overall' = 'None', tab1_2$vars_1_2_1))
         
-        # tab 1-2-2
+        # tab 1-2-2: Recruitment Tracking - Randomized Data
         updateDateRangeInput(session, 'daterange_1_2_2', start = min(tab0$DateRange_Tar[1], tab0$df$enrolled_date, na.rm = T), end = max(tab0$DateRange_Tar[2], tab0$df$enrolled_date, na.rm = T), min = min(tab0$DateRange_Tar[1], tab0$df$enrolled_date, na.rm = T), max = max(tab0$DateRange_Tar[2], tab0$df$enrolled_date, na.rm = T))
         updateSelectInput(session, 'var_facet_1_2_2', choices = c('Overall' = 'None', tab1_2$vars_1_2_2))
         updateSelectInput(session, 'var_group_1_2_2', choices = c('Overall' = 'None', tab1_2$vars_1_2_2))
         
-        # tab 1-2-3
+        # tab 1-2-3: Recruitment Tracking - Eligible Data
         updateDateRangeInput(session, 'daterange_1_2_3', start = min(tab0$DateRange_Tar[1], tab0$df$screen_date, na.rm = T), end = max(tab0$DateRange_Tar[2], tab0$df$screen_date, na.rm = T), min = min(tab0$DateRange_Tar[1], tab0$df$screen_date, na.rm = T), max = max(tab0$DateRange_Tar[2], tab0$df$screen_date, na.rm = T))
         updateSelectInput(session, 'var_facet_1_2_3', choices = c('Overall' = 'None', tab1_2$vars_1_2_3))
         updateSelectInput(session, 'var_group_1_2_3', choices = c('Overall' = 'None', tab1_2$vars_1_2_3))
-        
         
         # tab 1-3
         tab0$df_label_Enrolled <- tab0$df_label %>%
@@ -190,16 +190,16 @@ function(input, output, session) {
         updateSelectizeInput(session, 'vars_minor_1_3_2', choices = c(tab1_3$vars_1_3_cate, tab1_3$vars_1_3_num))
         
       } else {
-        output$result_search <- renderText('Fail to find the REDCap Data. (Please check your token or the variable list file.)')
+        output$result_search <- renderText('Fail to import the REDCap Data. (Please check your REDCap project token or the format of the variable list file.)')
       }
       
     } else {
-      output$result_search <- renderText('Fail to find the REDCap Data. (Can not find your variable names in REDCap database.)')
+      output$result_search <- renderText('Fail to import the REDCap Data. (Cannot find your variable names in REDCap database.)')
     }
     
   })
   
-  # Import Setting
+  # Import Setting: JSON File
   observeEvent(input$file_import_setting, {
     df <- fromJSON(read_json(input$file_import_setting$datapath)[[1]])
     # updateTextInput(session, 'token', value = df$Content[1])
@@ -227,32 +227,31 @@ function(input, output, session) {
     output$result_search <- NULL
   })
   
-  # Export Setting
+  # Export Setting: JSON File
   output$file_export_setting <- downloadHandler(
     filename = 'setting.json',
     content = function(file) {
-      df <- data.frame(InputName = c('Token', 'Research_Period_begin', 'Research_Period_end', 'Total_Screen_Tar', 'Rate_Eligible', 'Rate_Enrolled', 'Var_Screen_Date', 'Var_Eligible', 'Var_Exclude_Reason', 'Var_Enrolled', 'Var_Enrolled_Date', 'Is_Vars', 'Vars_List_Filename', 'Vars_List'),
+      df <- data.frame(InputName = c('Token', 'Research_Period_begin', 'Research_Period_end', 
+                                     'Total_Screen_Tar', 'Rate_Eligible', 'Rate_Enrolled', 
+                                     'Var_Screen_Date', 
+                                     'Var_Eligible', 
+                                     'Var_Exclude_Reason', 
+                                     'Var_Enrolled', 
+                                     'Var_Enrolled_Date', 
+                                     'Is_Vars', 'Vars_List_Filename', 'Vars_List'),
                        Content = c(input$token, format(input$DateRange_Tar[1]), format(input$DateRange_Tar[2]), input$Total_Screen_Tar, input$rate_eligible, input$rate_enrolled, input$var_screen_date, input$var_is_eligible, input$var_exclude_reason, input$var_is_enrolled, input$var_enrolled_date, is_vars, ifelse(is.null(vars_list_filename), '', vars_list_filename), str_c(vars_list, collapse = '|')))
       x <- toJSON(df)
       write_json(x, path = file)
     }
   )
   
-  
   ##################################################
-  
-  
   # tab 1-2
-  
   # facet variable -> Stratified variable
-  # group variable -> Substratified variable
-  
-  
+  # group variable -> Sub-stratified variable
   ##################################################
   
-  
-  # tab 1-2-1
-  
+  # tab 1-2-1: Recruitment Tracking - Screened Data
   observe({
     updateSelectInput(session, 'var_facet_1_2_1', choices = c('Overall' = 'None', tab1_2$vars_1_2_1) %>% .[. != ifelse(input$var_group_1_2_1 == 'None', '', input$var_group_1_2_1)], selected = input$var_facet_1_2_1)
     updateSelectInput(session, 'var_group_1_2_1', choices = c('Overall' = 'None', tab1_2$vars_1_2_1) %>% .[. != ifelse(input$var_facet_1_2_1 == 'None', '', input$var_facet_1_2_1)], selected = input$var_group_1_2_1)
@@ -261,12 +260,8 @@ function(input, output, session) {
   tab_1_2_1 <- reactiveValues(var_facet = NULL, var_group = NULL,
                               df_export = NULL, gp_export = NULL)
   
-  # (error)
-  # tab_1_2_1$var_facet <- reactive(ifelse(input$var_facet_1_2_1 == 'None', NULL, input$var_facet_1_2_1))
-  # tab_1_2_1$var_group <- reactive(ifelse(input$var_group_1_2_1 == 'None', NULL, input$var_group_1_2_1))
   tab_1_2_1$var_facet <- reactive(if (input$var_facet_1_2_1 == 'None') NULL else {input$var_facet_1_2_1})
   tab_1_2_1$var_group <- reactive(if (input$var_group_1_2_1 == 'None') NULL else {input$var_group_1_2_1})
-  
   
   # Data Processing (DP)
   tab_1_2_1$df_export <- reactive({
@@ -278,7 +273,6 @@ function(input, output, session) {
                var_facet = tab_1_2_1$var_facet(), var_group = tab_1_2_1$var_group())
     }
   })
-  
   
   # Plotting (Plot)
   tab_1_2_1$gp_export <- reactive({
@@ -294,7 +288,6 @@ function(input, output, session) {
   output$plot_1_2_1 <- renderPlotly({
     tab_1_2_1$gp_export()
   })
-  
   
   # Export Html
   output$file_1_2_1_html <- downloadHandler(
@@ -329,11 +322,8 @@ function(input, output, session) {
     }
   )
   
-  
   ##################################################
-  
-  
-  # tab 1-2-2
+  # tab 1-2-2: Recruitment Tracking - Randomized Data
   
   observe({
     updateSelectInput(session, 'var_group_1_2_2', choices = c('Overall' = 'None', tab1_2$vars_1_2_2) %>% .[. != ifelse(input$var_facet_1_2_2 == 'None', '', input$var_facet_1_2_2)], selected = input$var_group_1_2_2)
@@ -343,9 +333,6 @@ function(input, output, session) {
   tab_1_2_2 <- reactiveValues(var_facet = NULL, var_group = NULL,
                               df_export = NULL, gp_export = NULL)
   
-  # (error)
-  # tab_1_2_2$var_facet <- reactive(ifelse(input$var_facet_1_2_2 == 'None', NULL, input$var_facet_1_2_2))
-  # tab_1_2_2$var_group <- reactive(ifelse(input$var_group_1_2_2 == 'None', NULL, input$var_group_1_2_2))
   tab_1_2_2$var_facet <- reactive(if (input$var_facet_1_2_2 == 'None') NULL else {input$var_facet_1_2_2})
   tab_1_2_2$var_group <- reactive(if (input$var_group_1_2_2 == 'None') NULL else {input$var_group_1_2_2})
   
@@ -361,7 +348,6 @@ function(input, output, session) {
     }
   })
   
-  
   # Plotting (Plot)
   tab_1_2_2$gp_export <- reactive({
     if (is.null(tab_1_2_1$df_export())) {
@@ -376,7 +362,6 @@ function(input, output, session) {
   output$plot_1_2_2 <- renderPlotly({
     tab_1_2_2$gp_export()
   })
-  
   
   # Export Html
   output$file_1_2_2_html <- downloadHandler(
@@ -411,11 +396,8 @@ function(input, output, session) {
     }
   )
   
-  
   ##################################################
-  
-  
-  # tab 1-2-3
+  # tab 1-2-3: Recruitment Tracking - Eligible Data
   
   observe({
     updateSelectInput(session, 'var_facet_1_2_3', choices = c('Overall' = 'None', tab1_2$vars_1_2_3) %>% .[. != ifelse(input$var_group_1_2_3 == 'None', '', input$var_group_1_2_3)], selected = input$var_facet_1_2_3)
@@ -428,7 +410,6 @@ function(input, output, session) {
   tab_1_2_3$var_facet <- reactive(if (input$var_facet_1_2_3 == 'None') NULL else {input$var_facet_1_2_3})
   tab_1_2_3$var_group <- reactive(if (input$var_group_1_2_3 == 'None') NULL else {input$var_group_1_2_3})
   
-  
   # Data Processing (DP)
   tab_1_2_3$df_export <- reactive({
     if (is.null(tab0$df_label)) {
@@ -439,7 +420,6 @@ function(input, output, session) {
                var_facet = tab_1_2_3$var_facet(), var_group = tab_1_2_3$var_group())
     }
   })
-  
   
   # Plotting (Plot)
   tab_1_2_3$gp_export <- reactive({
@@ -455,7 +435,6 @@ function(input, output, session) {
   output$plot_1_2_3 <- renderPlotly({
     tab_1_2_3$gp_export()
   })
-  
   
   # Export Html
   output$file_1_2_3_html <- downloadHandler(
@@ -476,7 +455,6 @@ function(input, output, session) {
     }
   )
   
-  
   # Export Table (ET)
   output$file_1_2_3_table <- downloadHandler(
     filename = 'Eligible_Data.xlsx',
@@ -491,11 +469,8 @@ function(input, output, session) {
     }
   )
   
-  
   ##################################################
-  
-  
-  # tab 1-3-1
+  # tab 1-3-1: Descriptive Statistics - Univariate Analysis
   
   # Plotting (Plot)
   output$plots_1_3_1 <- renderUI({
@@ -506,10 +481,9 @@ function(input, output, session) {
     tagList(plotoutput_list)
   })
   
-  
   ggplot_1_3_1 <- list()
   
-  # Category
+  # Categorical Variable
   observeEvent(input$vars_cate_1_3_1, {
     if (!is.null(tab0$df_label_Enrolled)) {
       for (var in input$vars_cate_1_3_1) {
@@ -531,7 +505,7 @@ function(input, output, session) {
     }
   })
   
-  # Numeric
+  # Numerical Variable
   observeEvent(input$vars_num_1_3_1, {
     if (!is.null(tab0$df_label_Enrolled)) {
       for (var in input$vars_num_1_3_1) {
@@ -573,7 +547,6 @@ function(input, output, session) {
       }
     }
   })
-  
   
   # Export Html
   output$file_1_3_1_html <- downloadHandler(
@@ -636,11 +609,8 @@ function(input, output, session) {
     }
   )
   
-  
   ##################################################
-  
-  
-  # tab 1-3-2
+  # tab 1-3-2: Descriptive Statistics - Bivariate Analysis
   
   observeEvent(input$var_main_1_3_2, {
     updateSelectInput(session, 'vars_minor_1_3_2', choices = c(tab1_3$vars_1_3_cate, tab1_3$vars_1_3_num) %>% .[. != input$var_main_1_3_2], selected = NULL)
@@ -658,7 +628,6 @@ function(input, output, session) {
       tagList(plotoutput_list)
     }
   })
-  
   
   ggplot_1_3_2 <- list()
   
@@ -686,7 +655,7 @@ function(input, output, session) {
           })
         }
         
-        # Category (Main) vs Numeric (Minor)
+        # Categorical (Main) vs Numerical (Minor)
         for (var2 in intersect(tab1_3$vars_1_3_num, input$vars_minor_1_3_2)) {
           local({
             plotname <- paste(var1, var2, sep = '_')
@@ -706,7 +675,7 @@ function(input, output, session) {
         
       } else {
         
-        # Numeric (Main) vs Category (Minor)
+        # Numerical (Main) vs Categorical (Minor)
         for (var2 in intersect(tab1_3$vars_1_3_cate, input$vars_minor_1_3_2)) {
           local({
             plotname <- paste(var1, var2, sep = '_')
@@ -724,7 +693,7 @@ function(input, output, session) {
           })
         }
         
-        # Numeric (Main) vs Numeric (Minor)
+        # Numerical (Main) vs Numerical (Minor)
         for (var2 in intersect(tab1_3$vars_1_3_num, input$vars_minor_1_3_2)) {
           local({
             plotname <- paste(var1, var2, sep = '_')
@@ -812,13 +781,5 @@ function(input, output, session) {
     }
   )
   
-  
-  
-  
-  
   ##################################################
-  
-  
-  
-  
 }
