@@ -1,0 +1,12 @@
+name: REDCap_Tracking
+title: REDCap_Tracking
+username:
+account: uicccts
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 3186470
+bundleId: 6549711
+url: https://uicccts.shinyapps.io/REDCap_Tracking/
+when: 1669269816.91417
+asMultiple: FALSE
+asStatic: FALSE
