@@ -2,9 +2,8 @@ library(ggplot2)
 library(plotly)
 library(dplyr); options(dplyr.summarise.inform = F)
 library(tidyr)
-
 ##################################################
-
+# Plot Function for Tracking Module: Screened Data 
 Plot_1_2_1 <- function(data,
                        ResearchPeriod, ObservedPeriod, unit,
                        var_facet, var_group)
@@ -54,12 +53,8 @@ Plot_1_2_1 <- function(data,
   return(gp)
 }
 
-# date_labels = '%Y-%m'
-
-
 ##################################################
-
-
+# Plot Function for Tracking Module: Randomized Data 
 Plot_1_2_2 <- function(data,
                        ResearchPeriod, ObservedPeriod, unit,
                        var_facet, var_group)
@@ -111,9 +106,8 @@ Plot_1_2_2 <- function(data,
   return(gp)
 }
 
-
 ##################################################
-
+# Plot Function for Tracking Module: Eligible Data 
 Plot_1_2_3 <- function(data,
                        ResearchPeriod, ObservedPeriod, unit,
                        var_facet, var_group)
@@ -163,10 +157,8 @@ Plot_1_2_3 <- function(data,
   return(gp)
 }
 
-
 ##################################################
-
-
+# Plot Function for Descriptive Statistics Module: Univariate Analysis 
 Plot_1_3_1 <- function(data,
                        var, varType, Vars,
                        nbins = NULL)
@@ -219,10 +211,8 @@ Plot_1_3_1 <- function(data,
   return(p)
 }
 
-
 ##################################################
-
-
+# Plot Function for Descriptive Statistics Module: Bivariate Analysis 
 Plot_1_3_2 <- function(data,
                        var1, var2, var1Type, var2Type, Vars)
 {
@@ -310,7 +300,3 @@ Plot_1_3_2 <- function(data,
   
   return(p)
 }
-
-
-
-

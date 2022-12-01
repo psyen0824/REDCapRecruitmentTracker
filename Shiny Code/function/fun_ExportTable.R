@@ -1,13 +1,9 @@
 library(openxlsx)
 library(dplyr)
 library(tidyr)
-
 options('openxlsx.minWidth' = 11)
-
-
 ##################################################
-
-
+# Excel Function for Tracking Module: Screened Data 
 ET_1_2_1 <- function(file, data, Vars,
                      ResearchPeriod, ObservedPeriod, unit,
                      var_facet, var_group)
@@ -174,10 +170,8 @@ ET_1_2_1 <- function(file, data, Vars,
   saveWorkbook(wb, file, overwrite = T)
 }
 
-
 ##################################################
-
-
+# Excel Function for Tracking Module: Randomized Data 
 ET_1_2_2 <- function(file, data, Vars,
                      ResearchPeriod, ObservedPeriod, unit,
                      var_facet, var_group)
@@ -362,8 +356,7 @@ ET_1_2_2 <- function(file, data, Vars,
 
 
 ##################################################
-
-
+# Excel Function for Tracking Module: Eligible Data 
 ET_1_2_3 <- function(file, data, Vars,
                      ResearchPeriod, ObservedPeriod, unit,
                      var_facet, var_group)
@@ -530,10 +523,8 @@ ET_1_2_3 <- function(file, data, Vars,
   saveWorkbook(wb, file, overwrite = T)
 }
 
-
 ##################################################
-
-
+# Excel Function for Descriptive Statistics Module: Univariate Analysis 
 ET_1_3_1 <- function(file, data, Vars,
                      ResearchPeriod, ObservedPeriod,
                      vars_cate, vars_num)
@@ -554,7 +545,7 @@ ET_1_3_1 <- function(file, data, Vars,
   writeData(wb, sheet = 'Sheet1', startRow = 2, startCol = 1, x = 'Observation Period')
   writeData(wb, sheet = 'Sheet1', startRow = 2, startCol = 3, x = paste(format(ObservedPeriod, '%Y-%m-%d'), collapse = ' to '))
   
-  # Sheet 1: Category
+  # Sheet 1: Categorical Variable
   if (length(vars_cate) > 0) {
     cloneWorksheet(wb, sheetName = 'cate', clonedSheet = 'Sheet1')
     i <- 4
@@ -586,7 +577,7 @@ ET_1_3_1 <- function(file, data, Vars,
     }
   }
   
-  # Sheet 2: Numeric
+  # Sheet 2: Numerical Variable
   if (length(vars_num) > 0) {
     cloneWorksheet(wb, sheetName = 'num', clonedSheet = 'Sheet1')
     i <- 4
@@ -614,10 +605,8 @@ ET_1_3_1 <- function(file, data, Vars,
   saveWorkbook(wb, file, overwrite = T)
 }
 
-
 ##################################################
-
-
+# Excel Function for Descriptive Statistics Module: Bivariate Analysis 
 ET_1_3_2 <- function(file, data,
                      ResearchPeriod, ObservedPeriod,
                      var_main, vars_minor,
@@ -905,8 +894,6 @@ ET_1_3_2 <- function(file, data,
   }
   
 }
-
-
 
 
 

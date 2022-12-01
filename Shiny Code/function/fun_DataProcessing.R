@@ -1,8 +1,7 @@
 library(dplyr); options(dplyr.summarise.inform = F)
 
 ##################################################
-
-
+# Data Processing for Tracking Module: Screened Data
 DP_1_2_1 <- function(data,
                      ResearchPeriod, unit,
                      var_facet, var_group)
@@ -30,11 +29,8 @@ DP_1_2_1 <- function(data,
   
   return(df)
 }
-
-
 ##################################################
-
-
+# Data Processing for Tracking Module: Randomized Data
 DP_1_2_2 <- function(data, data_Tar,
                      ResearchPeriod, unit,
                      var_facet, var_group)
@@ -70,18 +66,14 @@ DP_1_2_2 <- function(data, data_Tar,
   
   return(df)
 }
-
-
 ##################################################
-
-
+# Data Processing for Tracking Module: Eligible Data
 DP_1_2_3 <- function(data,
                      ResearchPeriod, unit,
                      var_facet, var_group)
 {
   begin_date <- min(data$screen_date, na.rm = T)
   end_date <- max(data$screen_date, na.rm = T)
-  
   
   suppressMessages({
     df <- data %>%
@@ -104,9 +96,4 @@ DP_1_2_3 <- function(data,
   
   return(df)
 }
-
-
 ##################################################
-
-
-
